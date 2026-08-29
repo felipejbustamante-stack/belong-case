@@ -158,6 +158,12 @@ export interface OpsCase {
   rationale: string;
   updates: CaseUpdate[];
   createdAt?: string;
+  /**
+   * The priority before a human overrode it. Set once, on the first override,
+   * so the engine's grade is never lost — the disagreements between the engine
+   * and the operators are what the rules get tuned against.
+   */
+  enginePriority?: string;
 }
 
 /** A case as it sits in the open queue, used for matching a new message. */

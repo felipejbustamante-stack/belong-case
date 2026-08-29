@@ -74,17 +74,29 @@ export function addIntake(input: Omit<Intake, "id" | "receivedAt">): Intake {
   return entry;
 }
 
+const LOGGED_FIELDS = {
+  status: "Status",
+  owner: "Owner",
+  priority: "Priority override",
+} as const;
+
 export function updateCase(id: string, patch: Partial<OpsCase>, note?: string): OpsCase | null {
   const db = load();
   const c = db.cases.find((x) => x.id === id);
   if (!c) return null;
   const before = { ...c };
+
+  // Preserve the engine's grade the first time a human disagrees with it.
+  if (patch.priority && patch.priority !== c.priority && !c.enginePriority) {
+    c.enginePriority = c.priority;
+  }
+
   Object.assign(c, patch);
-  for (const k of Object.keys(patch) as (keyof OpsCase)[]) {
-    if (before[k] !== c[k] && (k === "status" || k === "owner")) {
+  for (const k of Object.keys(LOGGED_FIELDS) as (keyof typeof LOGGED_FIELDS)[]) {
+    if (k in patch && before[k] !== c[k]) {
       db.log.unshift({
         at: new Date().toISOString(),
-        kind: k === "status" ? "Status" : "Owner",
+        kind: LOGGED_FIELDS[k],
         caseId: id,
         text: `${String(before[k])} → ${String(c[k])}`,
       });
