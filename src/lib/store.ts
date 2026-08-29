@@ -47,18 +47,40 @@ export const scenarioIsActive = (s: Scenario | undefined | null): boolean =>
     s.coordinatorsOut.length > 0 ||
     Object.keys(s.vendorCapacity).length > 0);
 
+const seed = (): DB => ({ cases: structuredClone(SEED_CASES), intake: [], log: [] });
+
+/**
+ * Where the filesystem is read-only — a serverless host, for instance — the
+ * store falls back to memory for the life of the instance rather than failing
+ * the request. State then resets on a cold start, which is honest for a
+ * demonstration and is what the Reset control does deliberately anyway.
+ *
+ * The exported functions below do not change shape either way, so swapping in
+ * Postgres later is still a change to this file and nothing else.
+ */
+let memory: DB | null = null;
+
 function load(): DB {
+  if (memory) return memory;
   try {
     if (fs.existsSync(FILE)) return JSON.parse(fs.readFileSync(FILE, "utf8")) as DB;
   } catch {
     // fall through to a fresh seed rather than crashing the request
   }
-  return { cases: structuredClone(SEED_CASES), intake: [], log: [] };
+  return seed();
 }
 
 function save(db: DB) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(FILE, JSON.stringify(db, null, 2));
+  if (memory) {
+    memory = db;
+    return;
+  }
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(FILE, JSON.stringify(db, null, 2));
+  } catch {
+    memory = db;
+  }
 }
 
 export const getDb = (): DB => load();
@@ -188,5 +210,5 @@ export function describeScenario(s: Scenario): string[] {
 
 /** Back to Monday 08:00, scenario included. Used between rehearsals. */
 export function reset() {
-  save({ cases: structuredClone(SEED_CASES), intake: [], log: [] });
+  save(seed());
 }
