@@ -108,5 +108,51 @@ check("a red case on a committed move-in is reported",
 const impact = candidateImpact(board, triage(SUPPLIED[2][2]));
 check("committing a candidate reports what it would break", impact.length > 0, true);
 
+console.log("\nScenario overrides — what the interview changes in real time\n");
+
+// Availability is overridden at the point of use. Nothing is written to the
+// vendor or team data, so clearing a scenario restores the real board exactly.
+const baseline = standingConflicts(board);
+
+const vendorDown = standingConflicts(board, {
+  vendorsDown: ["ReadySet Turnovers"],
+  vendorCapacity: {},
+  coordinatorsOut: [],
+});
+check("a vendor marked unavailable is reported against every case holding it",
+  vendorDown.some((c) => c.kind === "Vendor unavailable" && c.caseIds.length === 3), true);
+check("...and replaces the over-capacity finding rather than doubling it",
+  vendorDown.some((c) => c.kind === "Vendor over capacity" && /ReadySet/.test(c.text)), false);
+
+const cut = standingConflicts(board, {
+  vendorsDown: [],
+  vendorCapacity: { "ReadySet Turnovers": 1 },
+  coordinatorsOut: [],
+});
+check("a capacity cut names both the new number and the original",
+  cut.some((c) => c.kind === "Vendor over capacity" && /1\/day \(reduced from 2 crews\/day\)/.test(c.text)), true);
+
+const out = standingConflicts(board, {
+  vendorsDown: [],
+  vendorCapacity: {},
+  coordinatorsOut: ["Luis Ortega"],
+});
+check("a coordinator who is out has every one of their cases reported",
+  out.some((c) => c.kind === "Coordinator unavailable" && c.caseIds.length === 2), true);
+
+check("clearing the scenario restores the real board exactly",
+  JSON.stringify(standingConflicts(board)), JSON.stringify(baseline));
+
+check("a scenario cannot reach a priority, a licence or a spend rule",
+  vendorDown.concat(cut, out).some((c) => /priority|licen|approval|spend/i.test(c.kind)), false);
+
+const impactUnderScenario = candidateImpact(board, triage(SUPPLIED[2][2]), null, {
+  vendorsDown: ["Metro Appliance Repair"],
+  vendorCapacity: {},
+  coordinatorsOut: [],
+});
+check("committing under a scenario reports the recommended vendor is unavailable",
+  impactUnderScenario.some((c) => c.kind === "Recommended vendor is unavailable"), true);
+
 console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) FAILED.`}\n`);
 if (failures > 0) process.exit(1);

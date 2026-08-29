@@ -1,9 +1,31 @@
 import Link from "next/link";
 import { OpsNav } from "@/components/OpsNav";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PresenterBar } from "@/components/PresenterBar";
 import { BelongWordmark, SimulationBadge } from "@/components/ui";
+import { listCases, getScenario, describeScenario } from "@/lib/store";
+import { openCases, vendorsIn } from "@/lib/triage/conflicts";
+import { TEST_INPUTS } from "@/lib/domain/testInputs";
+import { COORDINATOR_CAPACITY } from "@/lib/domain/policy";
+import { HOMES } from "@/lib/domain/homes";
+import { ZONE } from "@/lib/domain/types";
+
+export const dynamic = "force-dynamic";
 
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
+  const cases = listCases();
+  const scenario = getScenario();
+
+  // Only the vendors actually committed on the open board are offered as
+  // scenario levers — those are the ones whose loss changes anything.
+  const vendors = Array.from(
+    new Map(
+      openCases(cases)
+        .flatMap((c) => vendorsIn(c.assignment))
+        .map((v) => [v.name, { name: v.name, capacity: v.capacity }]),
+    ).values(),
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div className="min-h-screen">
       {/* Opaque rather than translucent: content scrolling under a blurred bar
@@ -31,6 +53,20 @@ export default function OpsLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+
+      <PresenterBar
+        inputs={TEST_INPUTS.map(({ id, relatedCase, channel, demonstrates }) => ({
+          id,
+          relatedCase,
+          channel,
+          demonstrates,
+        }))}
+        vendors={vendors}
+        coordinators={Object.keys(COORDINATOR_CAPACITY)}
+        homes={HOMES.map((h) => ({ id: h.id, label: `${h.id} · ${ZONE[h.zone]}` }))}
+        scenario={scenario}
+        activeDescription={describeScenario(scenario)}
+      />
 
       <main className="mx-auto max-w-shell px-6 py-8">{children}</main>
     </div>

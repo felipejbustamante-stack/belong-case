@@ -30,12 +30,18 @@ const WORKSTREAMS = ["In-Home Services", "Turnover / Home Readiness", "Onboardin
 
 function RiskPanel({
   conflicts,
+  newKeys,
+  scenarioDescription,
   onPickCase,
 }: {
   conflicts: Conflict[];
+  newKeys: string[];
+  scenarioDescription: string[];
   onPickCase: (id: string) => void;
 }) {
   const blocking = conflicts.filter((c) => c.severity === "high");
+  const isNew = (c: Conflict) => newKeys.includes(`${c.kind}|${c.text}`);
+  const newly = conflicts.filter(isNew);
 
   if (!conflicts.length) {
     return (
@@ -70,6 +76,18 @@ function RiskPanel({
         </summary>
 
         <div className="border-t border-line">
+          {scenarioDescription.length > 0 && (
+            <div className="border-b border-warnLine bg-warnBg px-5 py-3">
+              <p className="text-[13px] font-semibold text-warn">
+                What-if applied: {scenarioDescription.join(" · ")}
+              </p>
+              <p className="mt-1 text-[13px] leading-relaxed text-ink2">
+                {newly.length === 0
+                  ? "This change breaks nothing that was not already broken. The plan absorbs it."
+                  : `It newly breaks ${newly.length} thing${newly.length > 1 ? "s" : ""}, marked below. Everything else was already true.`}
+              </p>
+            </div>
+          )}
           <p className="border-b border-line2 bg-surface2 px-5 py-2.5 text-[12.5px] leading-relaxed text-ink3">
             The board reports what a change breaks and stops there. Re-planning
             the 72 hours is the manager&rsquo;s job; not being surprised is the
@@ -77,8 +95,14 @@ function RiskPanel({
           </p>
           {/* Capped so a long findings list cannot push the board itself off-screen. */}
           <ul className="max-h-[21rem] divide-y divide-line2 overflow-y-auto">
-            {conflicts.map((c, i) => (
-              <li key={i} className="flex flex-wrap items-start gap-3 px-5 py-3.5">
+            {[...conflicts].sort((a, b) => Number(isNew(b)) - Number(isNew(a))).map((c, i) => (
+              <li
+                key={i}
+                className={`flex flex-wrap items-start gap-3 px-5 py-3.5 ${
+                  isNew(c) ? "bg-warnBg/50" : ""
+                }`}
+              >
+                {isNew(c) && <Pill tone="warn">New</Pill>}
                 <Pill tone={severityTone(c.severity)}>{c.kind}</Pill>
                 <span className="min-w-[18rem] flex-1 text-[13.5px] leading-relaxed text-ink2">
                   {c.text}
@@ -551,11 +575,15 @@ export function BoardClient({
   conflicts,
   owners,
   initialQuery = "",
+  newKeys = [],
+  scenarioDescription = [],
 }: {
   cases: CaseView[];
   conflicts: Conflict[];
   owners: string[];
   initialQuery?: string;
+  newKeys?: string[];
+  scenarioDescription?: string[];
 }) {
   const router = useRouter();
   const [q, setQ] = useState(initialQuery);
@@ -610,7 +638,12 @@ export function BoardClient({
         </div>
       </header>
 
-      <RiskPanel conflicts={conflicts} onPickCase={(id) => setQ(id)} />
+      <RiskPanel
+        conflicts={conflicts}
+        newKeys={newKeys}
+        scenarioDescription={scenarioDescription}
+        onPickCase={(id) => setQ(id)}
+      />
 
       <Card className="flex flex-wrap items-center gap-3 p-4">
         <input

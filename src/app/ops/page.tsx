@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listIntake, listCases } from "@/lib/store";
+import { listIntake, listCases, getScenario } from "@/lib/store";
 import { triage } from "@/lib/triage/engine";
 import { candidateImpact } from "@/lib/triage/conflicts";
 import { TriageDetail } from "@/components/TriageDetail";
@@ -28,6 +28,9 @@ export const dynamic = "force-dynamic";
 export default function OpsInbox() {
   const intake = listIntake();
   const cases = listCases();
+  // A what-if applied on the board changes what committing a message breaks,
+  // so the inbox has to see it too.
+  const scenario = getScenario();
 
   return (
     <div className="space-y-6">
@@ -63,6 +66,7 @@ export default function OpsInbox() {
               cases,
               r,
               r.match.top?.queueCase.id ?? null,
+              scenario,
             );
 
             return (

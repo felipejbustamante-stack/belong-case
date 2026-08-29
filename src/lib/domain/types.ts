@@ -293,3 +293,22 @@ export interface Conflict {
   text: string;
   caseIds: string[];
 }
+
+/**
+ * A what-if applied on top of the real board: a vendor unavailable, a crew's
+ * day capacity cut, a coordinator out. The interview introduces changes like
+ * these in real time, and the honest answer to one is not a re-plan — it is a
+ * fast, complete account of what the change breaks.
+ *
+ * Overrides are passed into the conflict engine at the call site. Nothing is
+ * written to the vendor or team data, so clearing the scenario restores the
+ * real world exactly.
+ */
+export interface Scenario {
+  /** Vendors unavailable for the rest of the window. */
+  vendorsDown: string[];
+  /** Vendor name to a reduced number of jobs or crews per day. */
+  vendorCapacity: Record<string, number>;
+  /** Coordinators who are out and can carry nothing. */
+  coordinatorsOut: string[];
+}

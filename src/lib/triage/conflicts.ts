@@ -12,9 +12,32 @@ import { VENDORS, capacityOf } from "../domain/vendors";
 import { homeById } from "../domain/homes";
 import { UNIQUE_ITEMS } from "../domain/inventory";
 import { COORDINATOR_CAPACITY, IMMOVABLE_COMMITMENTS } from "../domain/policy";
-import { ZONE, type Conflict, type OpsCase, type TriageResult, type Vendor } from "../domain/types";
+import {
+  ZONE,
+  type Conflict,
+  type OpsCase,
+  type Scenario,
+  type TriageResult,
+  type Vendor,
+} from "../domain/types";
 
 const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Scenario overrides are applied here, at the point of use, rather than by
+ * mutating the vendor or team data. Clearing the scenario therefore restores
+ * the real world exactly — there is no state to unwind.
+ */
+function effectiveCapacity(v: Vendor, scenario?: Scenario): number {
+  if (scenario?.vendorsDown.includes(v.name)) return 0;
+  const override = scenario?.vendorCapacity[v.name];
+  return override ?? capacityOf(v);
+}
+
+function coordinatorCapacity(owner: string, scenario?: Scenario): number | undefined {
+  if (scenario?.coordinatorsOut.includes(owner)) return 0;
+  return COORDINATOR_CAPACITY[owner];
+}
 
 /** Vendors named anywhere in a case's assignment text. */
 export function vendorsIn(text: string): Vendor[] {
@@ -29,7 +52,7 @@ const rank = { high: 0, med: 1, low: 2 } as const;
 
 /* ------------------------------------------ standing conflicts on the board */
 
-export function standingConflicts(cases: OpsCase[]): Conflict[] {
+export function standingConflicts(cases: OpsCase[], scenario?: Scenario): Conflict[] {
   const open = openCases(cases);
   const out: Conflict[] = [];
   const add = (severity: Conflict["severity"], kind: string, text: string, caseIds: string[] = []) =>
@@ -46,8 +69,14 @@ export function standingConflicts(cases: OpsCase[]): Conflict[] {
       byOwner["Unassigned"]);
   }
   for (const [owner, ids] of Object.entries(byOwner)) {
-    const cap = COORDINATOR_CAPACITY[owner];
-    if (owner === "Unassigned" || !cap) continue;
+    if (owner === "Unassigned") continue;
+    const cap = coordinatorCapacity(owner, scenario);
+    if (cap === 0) {
+      add("high", "Coordinator unavailable",
+        `${owner} is out and holds ${ids.length} open case${ids.length > 1 ? "s" : ""}. Every one needs a named replacement owner before it can move — an unowned case does not progress on its own.`, ids);
+      continue;
+    }
+    if (!cap) continue;
     if (ids.length > cap) {
       add("high", "Coordinator over capacity",
         `${owner} holds ${ids.length} open cases against a practical capacity of ${cap}. Reassign ${ids.length - cap} or accept that the overflow will slip.`, ids);
@@ -63,13 +92,22 @@ export function standingConflicts(cases: OpsCase[]): Conflict[] {
 
   for (const [name, ids] of Object.entries(byVendor)) {
     const v = VENDORS.find((x) => x.name === name)!;
-    const cap = capacityOf(v);
+    const cap = effectiveCapacity(v, scenario);
+
+    if (scenario?.vendorsDown.includes(name)) {
+      add("high", "Vendor unavailable",
+        `${name} is unavailable and appears on ${ids.length} open case${ids.length > 1 ? "s" : ""}. Each needs a compliant alternative or a new date — and on licensed work a generalist is not an alternative.`, ids);
+      continue;
+    }
+    const reduced = scenario?.vendorCapacity[name];
+    const stated = reduced != null ? `${reduced}/day (reduced from ${v.capacity})` : v.capacity;
+
     if (ids.length > cap) {
       add("high", "Vendor over capacity",
-        `${name} appears on ${ids.length} open cases against a stated capacity of ${v.capacity}. At least ${ids.length - cap} cannot be served on the same day.`, ids);
+        `${name} appears on ${ids.length} open cases against a stated capacity of ${stated}. At least ${ids.length - cap} cannot be served on the same day.`, ids);
     } else if (ids.length === cap && cap !== Infinity) {
       add("med", "Vendor at capacity",
-        `${name} is fully committed at ${v.capacity}. There is no room here for anything new today.`, ids);
+        `${name} is fully committed at ${stated}. There is no room here for anything new today.`, ids);
     }
   }
 
@@ -111,7 +149,7 @@ export function standingConflicts(cases: OpsCase[]): Conflict[] {
     const v = VENDORS.find((x) => x.name === name);
     if (!v) continue;
     const used = byVendor[name]?.length ?? 0;
-    if (used >= capacityOf(v)) {
+    if (used >= effectiveCapacity(v, scenario)) {
       add("med", "Single-source trade fully committed",
         `${name} is the only ${v.trade} vendor available for most zones and is already at ${v.capacity}. A further ${v.trade} emergency today has no compliant fallback — a generalist is not one.`,
         byVendor[name] ?? []);
@@ -124,7 +162,7 @@ export function standingConflicts(cases: OpsCase[]): Conflict[] {
 /* ------------------------------ what a candidate would break, before commit */
 
 export function candidateImpact(
-  cases: OpsCase[], r: TriageResult, attachTo?: string | null,
+  cases: OpsCase[], r: TriageResult, attachTo?: string | null, scenario?: Scenario,
 ): Conflict[] {
   const open = openCases(cases);
   const out: Conflict[] = [];
@@ -136,7 +174,11 @@ export function candidateImpact(
 
   if (rec) {
     const used = open.filter((c) => vendorsIn(c.assignment).some((v) => v.name === rec.name)).length;
-    const cap = capacityOf(rec);
+    const cap = effectiveCapacity(rec, scenario);
+    if (scenario?.vendorsDown.includes(rec.name)) {
+      add("high", "Recommended vendor is unavailable",
+        `${rec.name} is the ranked recommendation but is unavailable in the current scenario. Pick the backup, or if none exists, this case has no compliant resource today.`);
+    }
     if (used >= cap) {
       add("high", "Recommended vendor is full",
         `${rec.name} is already on ${used} open case${used > 1 ? "s" : ""} against a capacity of ${rec.capacity}. Booking this one makes the day undeliverable for at least one of them — pick the backup or move a case.`);

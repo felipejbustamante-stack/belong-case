@@ -7,6 +7,7 @@ import {
   nextCaseId,
   getIntake,
   commitIntake,
+  getScenario,
 } from "@/lib/store";
 import { standingConflicts } from "@/lib/triage/conflicts";
 import { triage } from "@/lib/triage/engine";
@@ -34,9 +35,13 @@ const GATE_KEYS: GateKey[] = [
 
 export async function GET() {
   const cases = listCases();
+  const scenario = getScenario();
   return NextResponse.json({
     cases,
-    conflicts: standingConflicts(cases),
+    // Under the same what-if the board is showing, so the API and the screen
+    // never describe two different worlds.
+    conflicts: standingConflicts(cases, scenario),
+    scenario,
     log: listLog(),
   });
 }

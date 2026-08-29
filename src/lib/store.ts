@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { SEED_CASES } from "./domain/cases";
-import type { OpsCase, CaseUpdate, Channel } from "./domain/types";
+import type { OpsCase, CaseUpdate, Channel, Scenario } from "./domain/types";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const FILE = path.join(DATA_DIR, "cases.json");
@@ -31,7 +31,21 @@ interface DB {
   cases: OpsCase[];
   intake: Intake[];
   log: { at: string; kind: string; caseId?: string; text: string }[];
+  /** A what-if laid over the real board. Never written into the domain data. */
+  scenario?: Scenario;
 }
+
+export const EMPTY_SCENARIO: Scenario = {
+  vendorsDown: [],
+  vendorCapacity: {},
+  coordinatorsOut: [],
+};
+
+export const scenarioIsActive = (s: Scenario | undefined | null): boolean =>
+  !!s &&
+  (s.vendorsDown.length > 0 ||
+    s.coordinatorsOut.length > 0 ||
+    Object.keys(s.vendorCapacity).length > 0);
 
 function load(): DB {
   try {
@@ -145,6 +159,34 @@ export function nextCaseId(): string {
   return `N-${Math.max(500, ...nums) + 1}`;
 }
 
+export function getScenario(): Scenario {
+  return load().scenario ?? structuredClone(EMPTY_SCENARIO);
+}
+
+export function setScenario(s: Scenario): Scenario {
+  const db = load();
+  db.scenario = s;
+  db.log.unshift({
+    at: new Date().toISOString(),
+    kind: "Scenario",
+    text: scenarioIsActive(s)
+      ? `Applied: ${describeScenario(s).join("; ")}`
+      : "Cleared — back to the real board",
+  });
+  save(db);
+  return s;
+}
+
+/** Plain sentences for the log and the banner. */
+export function describeScenario(s: Scenario): string[] {
+  const out: string[] = [];
+  for (const v of s.vendorsDown) out.push(`${v} unavailable`);
+  for (const [v, n] of Object.entries(s.vendorCapacity)) out.push(`${v} cut to ${n}/day`);
+  for (const c of s.coordinatorsOut) out.push(`${c} out`);
+  return out;
+}
+
+/** Back to Monday 08:00, scenario included. Used between rehearsals. */
 export function reset() {
   save({ cases: structuredClone(SEED_CASES), intake: [], log: [] });
 }
