@@ -3,6 +3,7 @@ import { listIntake, listCases } from "@/lib/store";
 import { triage } from "@/lib/triage/engine";
 import { candidateImpact } from "@/lib/triage/conflicts";
 import { TriageDetail } from "@/components/TriageDetail";
+import { CommitActions } from "./CommitActions";
 import {
   Card,
   EmptyState,
@@ -65,7 +66,13 @@ export default function OpsInbox() {
             );
 
             return (
-              <Card as="article" key={entry.id} className="animate-rise overflow-hidden">
+              <Card
+                as="article"
+                key={entry.id}
+                className={`animate-rise overflow-hidden ${
+                  entry.committedTo ? "opacity-80" : ""
+                }`}
+              >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-surface2 px-5 py-3">
                   <Pill tone={priorityTone(r.priority.level)} className="text-[12.5px]">
                     {r.priority.level}
@@ -178,6 +185,15 @@ export default function OpsInbox() {
                     <TriageDetail r={r} showQuarantine={false} />
                   </div>
                 </details>
+
+                <CommitActions
+                  intakeId={entry.id}
+                  matchCaseId={r.match.top?.queueCase.id ?? null}
+                  matchIssue={r.match.top?.queueCase.issue ?? null}
+                  confidence={r.match.confidence}
+                  impact={impact}
+                  committedTo={entry.committedTo}
+                />
               </Card>
             );
           })}

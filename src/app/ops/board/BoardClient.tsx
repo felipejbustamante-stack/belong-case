@@ -351,13 +351,15 @@ export function BoardClient({
   cases,
   conflicts,
   owners,
+  initialQuery = "",
 }: {
   cases: CaseView[];
   conflicts: Conflict[];
   owners: string[];
+  initialQuery?: string;
 }) {
   const router = useRouter();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [workstream, setWorkstream] = useState("all");
   const [risk, setRisk] = useState("all");
   const [owner, setOwner] = useState("all");

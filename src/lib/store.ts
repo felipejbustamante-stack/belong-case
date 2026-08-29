@@ -111,6 +111,24 @@ export function updateCase(id: string, patch: Partial<OpsCase>, note?: string): 
   return c;
 }
 
+export function getIntake(id: string): Intake | undefined {
+  return load().intake.find((i) => i.id === id);
+}
+
+/**
+ * Records that a human decided where an intake message goes. The message stays
+ * in the inbox afterwards — a de-duplicated report that vanishes is
+ * indistinguishable from one that was ignored.
+ */
+export function commitIntake(intakeId: string, caseId: string): Intake | null {
+  const db = load();
+  const entry = db.intake.find((i) => i.id === intakeId);
+  if (!entry) return null;
+  entry.committedTo = caseId;
+  save(db);
+  return entry;
+}
+
 export function addCase(c: OpsCase): OpsCase {
   const db = load();
   db.cases.unshift(c);

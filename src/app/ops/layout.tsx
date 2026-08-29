@@ -6,7 +6,9 @@ import { BelongWordmark, SimulationBadge } from "@/components/ui";
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur">
+      {/* Opaque rather than translucent: content scrolling under a blurred bar
+          reads as a rendering fault on a projector. */}
+      <header className="sticky top-0 z-30 border-b border-line bg-surface">
         <div className="mx-auto flex max-w-shell flex-wrap items-center gap-x-5 gap-y-3 px-6 py-3">
           <Link href="/" className="flex items-baseline gap-2.5">
             <BelongWordmark className="text-[17px]" />
