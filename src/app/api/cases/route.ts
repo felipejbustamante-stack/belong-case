@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listCases, updateCase, addCase, nextCaseId, listLog } from "@/lib/store";
+import { listCases, updateCase, listLog } from "@/lib/store";
 import { standingConflicts } from "@/lib/triage/conflicts";
 
 export async function GET() {
@@ -20,5 +20,3 @@ export async function PATCH(req: Request) {
   if (!updated) return NextResponse.json({ error: "case not found" }, { status: 404 });
   return NextResponse.json({ ok: true, case: updated });
 }
-
-export { addCase, nextCaseId };

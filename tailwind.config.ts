@@ -1,10 +1,12 @@
 import type { Config } from "tailwindcss";
 
 /**
- * The palette and type scale carried over from the case deliverables, so the
- * product reads as the same system as the readout and the operating plan.
- * Semantic colours (red / amber / green) are policy status, never decoration —
- * keep them separate from the accent.
+ * Every colour resolves to a CSS variable defined in `globals.css`, so light
+ * and dark are one token set rather than two stylesheets.
+ *
+ * `brand` carries identity and action. `danger` / `warn` / `good` carry policy
+ * status — red, amber or green against a service or move-in commitment — and
+ * are deliberately never reused for decoration.
  */
 export default {
   content: ["./src/**/*.{ts,tsx}"],
@@ -20,6 +22,12 @@ export default {
         ink3: "var(--ink-3)",
         line: "var(--line)",
         line2: "var(--line-2)",
+        brand: "var(--brand)",
+        brandInk: "var(--brand-ink)",
+        brandWash: "var(--brand-wash)",
+        brandLine: "var(--brand-line)",
+        terracotta: "var(--terracotta)",
+        terracottaWash: "var(--terracotta-wash)",
         accent: "var(--accent)",
         accentWash: "var(--accent-wash)",
         danger: "var(--red)",
@@ -33,9 +41,18 @@ export default {
         goodLine: "var(--green-line)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        cond: ["var(--font-cond)", "var(--font-sans)", "sans-serif"],
-        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        sans: ["var(--font-sans)"],
+        display: ["var(--font-display)"],
+        mono: ["var(--font-mono)"],
+        // retained so existing `font-cond` usages resolve to the UI face
+        cond: ["var(--font-sans)"],
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        lift: "var(--shadow-lift)",
+      },
+      maxWidth: {
+        shell: "1320px",
       },
     },
   },

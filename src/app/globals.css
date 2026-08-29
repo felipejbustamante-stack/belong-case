@@ -3,50 +3,90 @@
 @tailwind utilities;
 
 /**
- * One token set, light and dark. Semantic colours carry policy status
- * (red / amber / green against a service or move-in commitment) and are kept
- * separate from the accent so status never reads as decoration.
+ * One token set, light and dark.
+ *
+ * Two rules hold this palette together:
+ *   1. Status colour (red / amber / green) means a case is red, amber or green
+ *      against a service or move-in commitment. It is never decoration, and it
+ *      is kept separate from the brand so the two can never be confused.
+ *   2. The brand green carries identity and action. It never carries status.
+ *
+ * Belong's real brand assets were not reachable from the build environment and
+ * are deliberately not reproduced: this is a case simulation and every screen
+ * says so. The palette is Belong-inspired, not Belong's.
  */
 :root {
-  --ground: #eef2f5;
-  --surface: #ffffff;
-  --surface-2: #f6f9fb;
-  --sunken: #e3eaef;
-  --ink: #101c24;
-  --ink-2: #3d5261;
-  --ink-3: #6b818f;
-  --line: #d3dee5;
-  --line-2: #e6edf1;
-  --accent: #0b5560;
-  --accent-wash: #dcedf0;
-  --red: #a8271c;
-  --red-bg: #fbe6e3;
-  --red-line: #e8a9a1;
-  --amber: #8a5600;
-  --amber-bg: #fbefd8;
-  --amber-line: #e2be7c;
-  --green: #1a5f3e;
-  --green-bg: #deefe4;
-  --green-line: #9cc9af;
+  color-scheme: light;
 
-  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --font-cond: "IBM Plex Sans Condensed", var(--font-sans);
-  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* ground & surfaces — warm cream, not grey */
+  --ground: #f7f4ee;
+  --surface: #ffffff;
+  --surface-2: #fbf9f5;
+  --sunken: #efeae1;
+
+  /* ink — warm near-black, never pure black */
+  --ink: #1c2420;
+  --ink-2: #47544d;
+  --ink-3: #74817a;
+  --line: #e2ddd2;
+  --line-2: #ece8df;
+
+  /* brand — identity and action */
+  --brand: #1f4d3f;
+  --brand-ink: #f4efe6;
+  --brand-wash: #e4ede7;
+  --brand-line: #b9cfc3;
+  --terracotta: #c96f4a;
+  --terracotta-wash: #f7e9e1;
+
+  /* accent is an alias of brand: one identity colour, two names in the code */
+  --accent: var(--brand);
+  --accent-wash: var(--brand-wash);
+
+  /* status — policy, never decoration */
+  --red: #a8271c;
+  --red-bg: #faeae7;
+  --red-line: #e5b0a8;
+  --amber: #8a5600;
+  --amber-bg: #f8efdb;
+  --amber-line: #e0c084;
+  --green: #1a5f3e;
+  --green-bg: #e3efe7;
+  --green-line: #a3cbb4;
+
+  --shadow-card: 0 1px 2px rgb(28 36 32 / 0.05), 0 8px 24px rgb(28 36 32 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(28 36 32 / 0.06), 0 14px 40px rgb(28 36 32 / 0.1);
+
+  --font-sans: var(--f-ui), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--f-display), Georgia, "Times New Roman", serif;
+  --font-mono: var(--f-mono), ui-monospace, Menlo, monospace;
+  /* kept so pre-existing `font-cond` usages resolve to the UI face */
+  --font-cond: var(--font-sans);
 }
 
+/* Dark is derived from the same roles: deep green-black ground, cream ink. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #0b1216;
-    --surface: #131e24;
-    --surface-2: #18252c;
-    --sunken: #0f1a20;
-    --ink: #e6eef2;
-    --ink-2: #a9bdc8;
-    --ink-3: #7b929f;
-    --line: #26363f;
-    --line-2: #1e2c34;
-    --accent: #5fbecb;
-    --accent-wash: #12333a;
+    color-scheme: dark;
+
+    --ground: #101714;
+    --surface: #18211c;
+    --surface-2: #1d2722;
+    --sunken: #131b17;
+
+    --ink: #eae5dc;
+    --ink-2: #adb8b1;
+    --ink-3: #7f8b84;
+    --line: #2b3831;
+    --line-2: #222d27;
+
+    --brand: #7fb8a2;
+    --brand-ink: #101714;
+    --brand-wash: #17302a;
+    --brand-line: #2f5347;
+    --terracotta: #e09070;
+    --terracotta-wash: #33201a;
+
     --red: #f0a199;
     --red-bg: #361714;
     --red-line: #6b302a;
@@ -56,21 +96,33 @@
     --green: #93cfac;
     --green-bg: #123023;
     --green-line: #2c5942;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.24);
+    --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.34), 0 16px 44px rgb(0 0 0 / 0.34);
   }
 }
 
 :root[data-theme="dark"] {
-  --ground: #0b1216;
-  --surface: #131e24;
-  --surface-2: #18252c;
-  --sunken: #0f1a20;
-  --ink: #e6eef2;
-  --ink-2: #a9bdc8;
-  --ink-3: #7b929f;
-  --line: #26363f;
-  --line-2: #1e2c34;
-  --accent: #5fbecb;
-  --accent-wash: #12333a;
+  color-scheme: dark;
+
+  --ground: #101714;
+  --surface: #18211c;
+  --surface-2: #1d2722;
+  --sunken: #131b17;
+
+  --ink: #eae5dc;
+  --ink-2: #adb8b1;
+  --ink-3: #7f8b84;
+  --line: #2b3831;
+  --line-2: #222d27;
+
+  --brand: #7fb8a2;
+  --brand-ink: #101714;
+  --brand-wash: #17302a;
+  --brand-line: #2f5347;
+  --terracotta: #e09070;
+  --terracotta-wash: #33201a;
+
   --red: #f0a199;
   --red-bg: #361714;
   --red-line: #6b302a;
@@ -80,19 +132,55 @@
   --green: #93cfac;
   --green-bg: #123023;
   --green-line: #2c5942;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.24);
+  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.34), 0 16px 44px rgb(0 0 0 / 0.34);
 }
 
 body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Section eyebrow. Small, quiet, and used to name a field rather than shout. */
 .label {
-  font-family: var(--font-cond);
+  font-family: var(--font-sans);
   font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-3);
+}
+
+/* Consistent keyboard focus everywhere — this is demoed on a projector. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.32s cubic-bezier(0.22, 0.68, 0.35, 1) both;
 }

@@ -1,40 +1,36 @@
 import Link from "next/link";
-
-const NAV = [
-  { href: "/ops", label: "Inbox" },
-  { href: "/ops/board", label: "Case board" },
-  { href: "/ops/me", label: "My cases" },
-  { href: "/ops/metrics", label: "Metrics" },
-];
+import { OpsNav } from "@/components/OpsNav";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { BelongWordmark, SimulationBadge } from "@/components/ui";
 
 export default function OpsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-[1300px] flex-wrap items-baseline gap-6 px-6 py-4">
-          <Link href="/" className="font-cond text-lg font-bold">
-            Belong Operations
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/90 backdrop-blur">
+        <div className="mx-auto flex max-w-shell flex-wrap items-center gap-x-5 gap-y-3 px-6 py-3">
+          <Link href="/" className="flex items-baseline gap-2.5">
+            <BelongWordmark className="text-[17px]" />
+            <span className="text-[12px] font-semibold uppercase tracking-[0.14em] text-ink3">
+              Field Operations
+            </span>
           </Link>
-          <nav className="flex gap-1">
-            {NAV.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className="border border-transparent px-4 py-2 font-cond text-[12.5px] font-semibold uppercase tracking-wider text-ink3 hover:border-line hover:text-ink"
-              >
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          <Link
-            href="/resident"
-            className="ml-auto font-cond text-[12px] uppercase tracking-wider text-ink3 hover:text-accent"
-          >
-            Resident view →
-          </Link>
+
+          <OpsNav />
+
+          <div className="ml-auto flex items-center gap-3">
+            <SimulationBadge className="hidden lg:inline-flex" />
+            <ThemeToggle />
+            <Link
+              href="/resident"
+              className="rounded-full border border-line px-3.5 py-1.5 text-[12.5px] font-semibold text-ink2 transition hover:border-brand hover:text-brand"
+            >
+              Resident view
+            </Link>
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1300px] px-6 py-8">{children}</main>
+
+      <main className="mx-auto max-w-shell px-6 py-8">{children}</main>
     </div>
   );
 }
