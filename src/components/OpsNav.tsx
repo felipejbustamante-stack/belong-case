@@ -16,7 +16,11 @@ export function OpsNav() {
   return (
     <nav className="flex flex-wrap items-center gap-1" aria-label="Operations">
       {NAV.map((n) => {
-        const active = n.href === "/ops" ? pathname === "/ops" : pathname.startsWith(n.href);
+        // Prefix matching alone marks "My cases" active on /ops/metrics, since
+        // that path starts with /ops/me. The next character has to be a
+        // boundary.
+        const active =
+          pathname === n.href || pathname.startsWith(`${n.href}/`);
         return (
           <Link
             key={n.href}
