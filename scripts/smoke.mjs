@@ -11,8 +11,23 @@
  * Chromium is preinstalled in this environment; set CHROME to override.
  */
 
-import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+
+/**
+ * Playwright is not a dependency of this project. Installing it downloads a
+ * browser, which is a slow surprise for anyone who only wants to clone the
+ * repo and look at the product — and nothing in the demonstration needs it.
+ */
+let chromium;
+try {
+  ({ chromium } = await import("playwright"));
+} catch {
+  console.error(
+    "\nThis script needs Playwright, which the project deliberately does not depend on.\n" +
+      "  npm i -D playwright && npm run smoke\n",
+  );
+  process.exit(1);
+}
 
 const BASE = process.env.BASE ?? "http://localhost:3000";
 const CHROME = process.env.CHROME ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";

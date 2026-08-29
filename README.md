@@ -13,20 +13,26 @@ after that.
 *A case-study artifact. Every Home, Resident, employee, vendor, cost and event
 here is fictional, and no Belong brand asset is reproduced.*
 
+Needs Node 20 or newer. Nothing else — no database, no environment variables,
+no accounts. State lives in `.data/` (gitignored) so the product runs the
+moment it is cloned.
+
 ```bash
 npm install
-npm run dev      # http://localhost:3000
-npm test         # 48 regression tests on the engine and the gates
+npm run build && npm run start    # http://localhost:3000
+npm test                          # 48 regression tests on the engine and the gates
 ```
 
-No database, no environment variables, no accounts. State lives in `.data/`
-(gitignored) so the product runs the moment it is cloned.
+`npm run dev` also works and reloads on save; `build` then `start` is steadier
+for a live demonstration.
 
 ## The demo, in order
 
 Screenshots of each step are in [`docs/screenshots/`](docs/screenshots).
-`npm run smoke` drives this whole path against a running server, in light and
-dark, and fails on any console error.
+`npm i -D playwright && npm run smoke` drives this whole path against a running
+server, in light and dark, and fails on any console error. Playwright is
+deliberately not a dependency: installing it downloads a browser, and nothing
+in the demonstration needs one.
 
 1. **`/`** — what the artifact does, and the three structural failures it closes.
 2. **`/resident`** — report the sparking outlet. The inbox grades it P0 citing
