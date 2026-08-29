@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * One token set, light and dark. Semantic colours carry policy status
+ * (red / amber / green against a service or move-in commitment) and are kept
+ * separate from the accent so status never reads as decoration.
+ */
+:root {
+  --ground: #eef2f5;
+  --surface: #ffffff;
+  --surface-2: #f6f9fb;
+  --sunken: #e3eaef;
+  --ink: #101c24;
+  --ink-2: #3d5261;
+  --ink-3: #6b818f;
+  --line: #d3dee5;
+  --line-2: #e6edf1;
+  --accent: #0b5560;
+  --accent-wash: #dcedf0;
+  --red: #a8271c;
+  --red-bg: #fbe6e3;
+  --red-line: #e8a9a1;
+  --amber: #8a5600;
+  --amber-bg: #fbefd8;
+  --amber-line: #e2be7c;
+  --green: #1a5f3e;
+  --green-bg: #deefe4;
+  --green-line: #9cc9af;
+
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-cond: "IBM Plex Sans Condensed", var(--font-sans);
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0b1216;
+    --surface: #131e24;
+    --surface-2: #18252c;
+    --sunken: #0f1a20;
+    --ink: #e6eef2;
+    --ink-2: #a9bdc8;
+    --ink-3: #7b929f;
+    --line: #26363f;
+    --line-2: #1e2c34;
+    --accent: #5fbecb;
+    --accent-wash: #12333a;
+    --red: #f0a199;
+    --red-bg: #361714;
+    --red-line: #6b302a;
+    --amber: #e6bc74;
+    --amber-bg: #33260e;
+    --amber-line: #5e4820;
+    --green: #93cfac;
+    --green-bg: #123023;
+    --green-line: #2c5942;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0b1216;
+  --surface: #131e24;
+  --surface-2: #18252c;
+  --sunken: #0f1a20;
+  --ink: #e6eef2;
+  --ink-2: #a9bdc8;
+  --ink-3: #7b929f;
+  --line: #26363f;
+  --line-2: #1e2c34;
+  --accent: #5fbecb;
+  --accent-wash: #12333a;
+  --red: #f0a199;
+  --red-bg: #361714;
+  --red-line: #6b302a;
+  --amber: #e6bc74;
+  --amber-bg: #33260e;
+  --amber-line: #5e4820;
+  --green: #93cfac;
+  --green-bg: #123023;
+  --green-line: #2c5942;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.label {
+  font-family: var(--font-cond);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
