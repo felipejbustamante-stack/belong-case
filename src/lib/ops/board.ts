@@ -13,6 +13,7 @@ import { OPEN_QUEUE } from "../domain/queue";
 import { SLA } from "../domain/policy";
 import { homeById } from "../domain/homes";
 import { ZONE, type Home, type OpsCase, type Priority } from "../domain/types";
+import { blockedReason, dispatchConditions, type GateCondition } from "./gates";
 
 export interface CaseView extends OpsCase {
   /** The issue wording from the open queue — the card's title. */
@@ -21,6 +22,11 @@ export interface CaseView extends OpsCase {
   zoneName: string;
   /** Present only where the priority is an actual P0/P1/P2 SLA grade. */
   sla: { level: Priority; clause: string } | null;
+  /** The dispatch conditions that apply to this case, met and unmet. */
+  conditions: GateCondition[];
+  /** Non-null when the transition is refused, carrying the reason to show. */
+  blockedDispatch: string | null;
+  blockedVerify: string | null;
 }
 
 /**
@@ -49,6 +55,9 @@ export function toView(c: OpsCase): CaseView {
     home,
     zoneName: home ? ZONE[home.zone] : c.zone,
     sla: slaFor(c.priority),
+    conditions: dispatchConditions(c, home),
+    blockedDispatch: blockedReason(c, "Dispatched", home),
+    blockedVerify: blockedReason(c, "Verified", home),
   };
 }
 

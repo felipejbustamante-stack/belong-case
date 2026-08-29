@@ -74,6 +74,8 @@ export function caseFromTriage(
   return {
     id,
     workstream: r.workstream,
+    // Recorded so the dispatch gate knows whether this work needs a licence.
+    trade: r.trade?.trade.key,
     homeId: r.home?.id ?? "Unidentified",
     zone: r.home ? ZONE[r.home.zone] : "Not identified",
     priority: `${r.priority.level} — ${r.priority.rule.label}`,

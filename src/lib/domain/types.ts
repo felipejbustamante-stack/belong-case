@@ -138,6 +138,23 @@ export interface CaseUpdate {
   channel?: Channel;
 }
 
+/**
+ * The conditions that must hold before a visit is booked. Every failed trip in
+ * the source data traces back to one of these never having been checked.
+ */
+export type GateKey =
+  | "accessConfirmed"
+  | "coiReceipted"
+  | "buildingRuleMet"
+  | "licenceVerified"
+  | "partsOnHand";
+
+/** A condition satisfied by a named person, with what they checked. */
+export interface GateRecord {
+  at: string;
+  note: string;
+}
+
 export interface OpsCase {
   id: string;
   workstream: Workstream;
@@ -164,6 +181,15 @@ export interface OpsCase {
    * and the operators are what the rules get tuned against.
    */
   enginePriority?: string;
+  /** Set when the case was opened from intake, so the licence gate knows the trade. */
+  trade?: TradeKey;
+  /** Dispatch conditions explicitly satisfied by a person. Absent means unmet. */
+  gate?: Partial<Record<GateKey, GateRecord>>;
+  /**
+   * Belong's own functional verification. A vendor reporting completion never
+   * populates this — a named person confirming the work does.
+   */
+  verification?: { owner: string; at: string; check: string };
 }
 
 /** A case as it sits in the open queue, used for matching a new message. */

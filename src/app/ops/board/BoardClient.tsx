@@ -117,6 +117,184 @@ function Detail({ term, children }: { term: string; children: React.ReactNode })
   );
 }
 
+/**
+ * The gate that was missing. Each condition is satisfied by a person recording
+ * what they checked — there is no tick-everything action and no bypass, because
+ * a checklist that can be waved through is the state the operation was already
+ * in when it booked a vendor against an empty Home.
+ */
+function GatePanel({
+  c,
+  owners,
+  busy,
+  patch,
+}: {
+  c: CaseView;
+  owners: string[];
+  busy: boolean;
+  patch: (payload: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [vOwner, setVOwner] = useState(c.owner === "Unassigned" ? owners[0] : c.owner);
+  const [check, setCheck] = useState("");
+
+  const met = c.conditions.filter((x) => x.met).length;
+
+  return (
+    <div className="mt-4 rounded-xl border border-line bg-surface2 p-4">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Label>Dispatch readiness</Label>
+        {c.conditions.length === 0 ? (
+          <Pill tone="neutral">No conditions apply</Pill>
+        ) : c.blockedDispatch ? (
+          <Pill tone="danger">
+            {met} of {c.conditions.length} met — dispatch refused
+          </Pill>
+        ) : (
+          <Pill tone="good">All {c.conditions.length} met — may dispatch</Pill>
+        )}
+      </div>
+
+      {c.conditions.length > 0 && (
+        <ul className="mt-3 space-y-2.5">
+          {c.conditions.map((cond) => (
+            <li
+              key={cond.key}
+              className={`rounded-lg border p-3 ${
+                cond.met ? "border-goodLine bg-goodBg" : "border-line bg-surface"
+              }`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${cond.met ? "bg-good" : "bg-ink3"}`}
+                  aria-hidden
+                />
+                <span className="text-[13px] font-semibold">{cond.label}</span>
+                {cond.met ? (
+                  <span className="text-[12px] text-ink3">
+                    confirmed{cond.at ? ` ${new Date(cond.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="ml-auto"
+                    onClick={() => {
+                      setOpenKey(openKey === cond.key ? null : cond.key);
+                      setNote("");
+                    }}
+                  >
+                    Confirm
+                  </Button>
+                )}
+              </div>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink2">{cond.why}</p>
+              {cond.met && cond.note && (
+                <p className="mt-1.5 border-l-2 border-goodLine pl-2.5 text-[12.5px] text-ink2">
+                  {cond.note}
+                </p>
+              )}
+              {openKey === cond.key && (
+                <div className="mt-2.5 space-y-2">
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    placeholder="What did you check, and with whom?"
+                    className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[13px] outline-none placeholder:text-ink3 focus:border-brand"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={busy || note.trim().length < 3}
+                    onClick={async () => {
+                      const ok = await patch({ gate: { key: cond.key, note } });
+                      if (ok) setOpenKey(null);
+                    }}
+                  >
+                    Record it
+                  </Button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-4 border-t border-line pt-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Label>Verification owner</Label>
+          {c.verification ? (
+            <Pill tone="good">{c.verification.owner}</Pill>
+          ) : (
+            <Pill tone="warn">Nobody named</Pill>
+          )}
+          {!c.verification && (
+            <Button size="sm" className="ml-auto" onClick={() => setVerifying((v) => !v)}>
+              {verifying ? "Cancel" : "Name and verify"}
+            </Button>
+          )}
+        </div>
+
+        {c.verification ? (
+          <p className="mt-2 text-[12.5px] leading-relaxed text-ink2">
+            {c.verification.check}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink2">
+            A vendor reporting completion is not verification. A named Belong
+            person confirms the work functionally before this case can reach
+            Verified.
+          </p>
+        )}
+
+        {verifying && !c.verification && (
+          <div className="mt-2.5 space-y-2">
+            <label className="block">
+              <span className="label">Who verified it</span>
+              <select
+                value={vOwner}
+                onChange={(e) => setVOwner(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[13px] outline-none focus:border-brand"
+              >
+                {owners
+                  .filter((o) => o !== "Unassigned")
+                  .map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="label">The functional check</span>
+              <textarea
+                value={check}
+                onChange={(e) => setCheck(e.target.value)}
+                rows={2}
+                placeholder="What was tested, and what did it do? Not that the vendor finished."
+                className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[13px] outline-none placeholder:text-ink3 focus:border-brand"
+              />
+            </label>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={busy || !check.trim()}
+              onClick={async () => {
+                const ok = await patch({ verification: { owner: vOwner, check } });
+                if (ok) setVerifying(false);
+              }}
+            >
+              Record the verification
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CaseCard({
   c,
   owners,
@@ -132,7 +310,7 @@ function CaseCard({
   const [nextPriority, setNextPriority] = useState(c.priority);
   const [reason, setReason] = useState("");
 
-  async function patch(payload: Record<string, string>) {
+  async function patch(payload: Record<string, unknown>) {
     setBusy(true);
     setError("");
     try {
@@ -196,11 +374,23 @@ function CaseCard({
               onChange={(e) => patch({ status: e.target.value })}
               className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none transition focus:border-brand disabled:opacity-50"
             >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
+              {STATUSES.map((s) => {
+                // A gated transition is offered but refused, with the unmet
+                // condition named. Hiding it would leave the operator guessing
+                // why the case will not move.
+                const blocked =
+                  s === "Dispatched"
+                    ? c.blockedDispatch
+                    : s === "Verified"
+                      ? c.blockedVerify
+                      : null;
+                return (
+                  <option key={s} value={s} disabled={!!blocked} title={blocked ?? undefined}>
+                    {s}
+                    {blocked ? " — blocked" : ""}
+                  </option>
+                );
+              })}
             </select>
           </label>
 
@@ -277,11 +467,20 @@ function CaseCard({
           </div>
         )}
 
+        {c.blockedDispatch && (
+          <p className="mt-3 rounded-lg border border-warnLine bg-warnBg p-3 text-[12.5px] leading-relaxed text-ink2">
+            <span className="font-semibold text-warn">Dispatch is blocked. </span>
+            {c.blockedDispatch}
+          </p>
+        )}
+
         {error && (
           <p role="alert" className="mt-3 rounded-lg border border-dangerLine bg-dangerBg p-3 text-[13px] text-ink2">
             {error}
           </p>
         )}
+
+        <GatePanel c={c} owners={owners} busy={busy} patch={patch} />
 
         <details className="mt-4">
           <summary className="cursor-pointer text-[13px] font-semibold text-brand hover:underline">
@@ -493,7 +692,9 @@ export function BoardClient({
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div
+          className={`grid gap-4 ${shown.length > 1 ? "xl:grid-cols-2" : "max-w-3xl"}`}
+        >
           {shown.map((c) => (
             <CaseCard
               key={c.id}

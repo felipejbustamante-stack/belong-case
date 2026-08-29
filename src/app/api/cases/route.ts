@@ -11,8 +11,9 @@ import {
 import { standingConflicts } from "@/lib/triage/conflicts";
 import { triage } from "@/lib/triage/engine";
 import { caseFromTriage } from "@/lib/ops/commit";
+import { blockedReason } from "@/lib/ops/gates";
 import { OWNERS } from "@/lib/domain/policy";
-import type { CaseStatus, OpsCase } from "@/lib/domain/types";
+import type { CaseStatus, GateKey, OpsCase } from "@/lib/domain/types";
 
 const STATUSES: CaseStatus[] = [
   "New",
@@ -21,6 +22,14 @@ const STATUSES: CaseStatus[] = [
   "Blocked",
   "Verified",
   "Closed",
+];
+
+const GATE_KEYS: GateKey[] = [
+  "accessConfirmed",
+  "coiReceipted",
+  "buildingRuleMet",
+  "licenceVerified",
+  "partsOnHand",
 ];
 
 export async function GET() {
@@ -118,16 +127,69 @@ export async function PATCH(req: Request) {
     owner?: string;
     priority?: string;
     reason?: string;
+    gate?: { key?: string; note?: string };
+    verification?: { owner?: string; check?: string };
   };
 
-  const { id, status, owner, priority, reason } = body;
+  const { id, status, owner, priority, reason, gate, verification } = body;
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
+  const current = listCases().find((c) => c.id === id);
+  if (!current) return NextResponse.json({ error: "case not found" }, { status: 404 });
+
   const patch: Partial<OpsCase> = {};
+  const notes: string[] = [];
+
+  // Satisfying a dispatch condition: a person records what they checked.
+  if (gate) {
+    if (!gate.key || !GATE_KEYS.includes(gate.key as GateKey)) {
+      return NextResponse.json({ error: `Unknown condition: ${gate.key}` }, { status: 400 });
+    }
+    if (!gate.note || gate.note.trim().length < 3) {
+      return NextResponse.json(
+        { error: "Say what was checked. A tick with nothing behind it is what the gate exists to prevent." },
+        { status: 400 },
+      );
+    }
+    patch.gate = {
+      ...(current.gate ?? {}),
+      [gate.key as GateKey]: { at: new Date().toISOString(), note: gate.note.trim() },
+    };
+    notes.push(`Dispatch condition satisfied — ${gate.key}: ${gate.note.trim()}`);
+  }
+
+  // Naming the verification owner and what they functionally checked.
+  if (verification) {
+    const vOwner = verification.owner?.trim();
+    const check = verification.check?.trim();
+    if (!vOwner || !OWNERS.includes(vOwner)) {
+      return NextResponse.json(
+        { error: "Verification requires a named Belong person." },
+        { status: 400 },
+      );
+    }
+    if (!check) {
+      return NextResponse.json(
+        { error: "Record the functional check — what was tested, not that the vendor finished." },
+        { status: 400 },
+      );
+    }
+    patch.verification = { owner: vOwner, at: new Date().toISOString(), check };
+    notes.push(`Verified by ${vOwner}: ${check}`);
+  }
 
   if (status !== undefined) {
     if (!STATUSES.includes(status as CaseStatus)) {
       return NextResponse.json({ error: `Unknown status: ${status}` }, { status: 400 });
+    }
+    // The gate is enforced here, not only drawn in the interface. Disabling a
+    // menu option is a courtesy; refusing the transition is the control.
+    const blocked = blockedReason(
+      { ...current, ...patch },
+      status as CaseStatus,
+    );
+    if (blocked) {
+      return NextResponse.json({ error: blocked, blocked: true }, { status: 409 });
     }
     patch.status = status as CaseStatus;
   }
@@ -160,10 +222,10 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
   }
 
-  const note =
-    priority !== undefined && reason
-      ? `Priority overridden to "${priority.trim()}" — ${reason.trim()}`
-      : undefined;
+  if (priority !== undefined && reason) {
+    notes.push(`Priority overridden to "${priority.trim()}" — ${reason.trim()}`);
+  }
+  const note = notes.length ? notes.join(" ") : undefined;
 
   const updated = updateCase(id, patch, note);
   if (!updated) return NextResponse.json({ error: "case not found" }, { status: 404 });
