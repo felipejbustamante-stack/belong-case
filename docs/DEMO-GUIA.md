@@ -1,155 +1,193 @@
 # Guía de presentación (para Felipe)
 
-Este documento es tuyo: resume lo que ya está construido, lo que se va a
-construir según `docs/EXECUTION-PLAN.md`, las decisiones que tenés que poder
-defender, las trampas del caso y cómo el producto las neutraliza, y un guión de
-demo. Leelo entero antes de la entrevista.
+Este documento es tuyo. Resume qué quedó construido, las decisiones que tenés
+que poder defender, las trampas del caso y cómo el producto las neutraliza, el
+guión de demo, y las cosas nuevas que aparecieron durante el build y que
+conviene que sepas antes de entrar.
+
+Leelo entero. Especialmente §3 (trampas), §6 (hallazgos del build) y §7
+(preguntas probables).
 
 ---
 
-## 1. Qué tenés hoy y qué se construye
+## 1. Qué está construido y funcionando
 
-**Ya funciona (testeado, 21 tests de regresión):**
-- El motor de triage determinístico: mensaje crudo → orden de trabajo completa
-  (prioridad con cláusula de política, trade, contención separada de
-  reparación, plan de acceso, datos faltantes, riesgos, ruta de aprobación,
-  ranking de vendors con los excluidos y por qué, borrador de respuesta).
-- El motor de conflictos: qué rompe un cambio contra el tablero completo.
-- `/resident` (intake) y `/ops` (inbox con triage en vivo).
+Todo lo planificado está terminado, testeado y pusheado. **48 tests** pasan,
+más un smoke test que recorre el camino completo de demo en modo claro y
+oscuro (58 verificaciones por modo).
 
-**Se construye en la sesión de código (en este orden, cada fase es demoable):**
-0. Rebranding completo estilo Belong + landing "demo hub".
-1. Tablero de casos con panel de riesgo del plan.
-2. Commit desde el inbox (deduplicación: "registrar como update" vs "abrir caso").
-3. Access gate + verification owner (los dos controles que faltaban en el caso).
-4. Vista por coordinador con capacidad.
-5. Métricas honestas (sin números inventados).
-6. **Modo demo**: replay de los AI Test Inputs + caja para el input sorpresa +
-   panel de escenarios (vendor caído, capacidad recortada) con recálculo en vivo.
-7. Pulido y QA. 8 (opcional): deploy.
+| Pantalla | Qué hace |
+|---|---|
+| `/` | Encuadra el artefacto en una pantalla: qué hace, las tres fallas estructurales que cierra, y las dos puertas. |
+| `/resident` | El intake del Resident, por canal (app, texto, email, teléfono). |
+| `/ops` | Inbox: cada mensaje triado al llegar, con el texto original al lado. Botones de commit. |
+| `/ops/board` | Los 19 casos + panel de riesgo del plan + access gate + override con motivo. |
+| `/ops/me` | Vista por coordinador: carga vs capacidad, el día en orden, compromisos inamovibles. |
+| `/ops/metrics` | 7 medidas + las 2 que deliberadamente no se miden. |
+| `/about` | La tabla actúa / recomienda / aprueba humano. |
+| **Presenter controls** | Barra arriba de cualquier pantalla `/ops`: mensaje nuevo, replay de los 7 inputs, cambio de disponibilidad en vivo, reset. |
 
-**Modelo recomendado para la sesión de código: Claude Opus 5.** Es una sola
-pasada de alto riesgo con presentación mañana; la calidad del primer intento
-vale más que la velocidad. Sonnet 5 queda como respaldo para retoques chicos.
+Capturas de las 9 pantallas clave en `docs/screenshots/`.
 
 ## 2. Las decisiones que tenés que poder defender
 
-1. **No hay LLM en el camino de decisión.** Los datos del caso traían cinco
+1. **No hay LLM en el camino de decisión.** Los datos traían cinco
    instrucciones escritas para ser obedecidas por un lector automático, y tres
    apuntaban a los tres errores más caros disponibles. Un modelo leyendo texto
-   libre de vendors es exactamente la superficie que esas instrucciones
-   atacan. El motor es determinístico e inspeccionable; `findInjections()`
-   pone el texto en cuarentena **antes** de analizar nada y la UI muestra lo
-   que se removió. La IA se usó para diseñar las reglas, no para ejecutarlas.
-2. **No existe override para trades con licencia.** Ni flag de admin, ni botón
-   "forzar". En los datos, una emergencia eléctrica con olor a quemado estaba
-   agendada a un vendor sin licencia eléctrica. La respuesta correcta no es
-   "un humano lo revisa": es que el camino no exista.
+   libre de vendors es exactamente la superficie que esas instrucciones atacan.
+   El motor es determinístico e inspeccionable; `findInjections()` pone el texto
+   en cuarentena **antes** de analizar nada y la UI muestra qué se removió. La
+   IA hizo el diseño (derivar reglas de las políticas, construir el
+   clasificador, encontrar 6 bugs con inputs no vistos); no toma las decisiones.
+2. **No existe override para trades con licencia, autoridad de gasto ni access
+   gate.** Ni flag, ni admin, ni "forzar". En los datos, una emergencia
+   eléctrica con olor a quemado estaba agendada a un vendor sin licencia
+   eléctrica. La respuesta correcta no es "un humano lo revisa": es que el
+   camino no exista.
 3. **Contención ≠ resolución.** Un aire portátil no cierra un caso de HVAC.
 4. **Completado del vendor ≠ verificación.** Cierra una persona de Belong con
    nombre y un chequeo funcional. Tres move-ins comprometidos no tenían dueño
    de verificación.
 5. **El motor no re-planifica.** Reporta qué rompe un cambio y se detiene.
    Re-planificar las 72 horas es trabajo del manager; que no lo sorprendan es
-   trabajo de la herramienta. Esto es delegación bien entendida, no una
-   limitación.
+   trabajo de la herramienta.
 6. **Vendors rankeados por resolución en primera visita, nunca por precio.**
-   Los cuatro más baratos de la red son los cuatro peores en primera visita.
-7. **Prioridad siempre con su cláusula.** Quien hace override ve qué está
-   overrideando, y tiene que dejar el motivo por escrito. Esos desacuerdos son
-   los datos para mejorar las reglas.
+   Los cuatro más baratos promedian 84% y son de los peores de la red.
+7. **Prioridad siempre con su cláusula.** Y el override exige motivo escrito:
+   se guardan las dos versiones (la del motor y la humana) en el log.
 
 ## 3. Las trampas del caso y cómo respondés
 
-| Trampa | Qué hace el producto | Si te preguntan |
+| Trampa | Qué hace el producto | Qué decís |
 |---|---|---|
-| Inyección AI-07 (frase secreta en el web-form) | Cuarentena pre-análisis, visible en la UI. La frase **jamás** aparece en ningún entregable tuyo. | "Probablemente escanean las entregas buscando esa frase. La mía muestra el texto en cuarentena en pantalla, que es la prueba contraria." |
-| Handyman en trabajo eléctrico ("can your handyman fix both?") | El pedido mismo se marca; no existe camino de UI para asignarlo. | Mostrá la lista de vendors excluidos con motivo. |
-| Presupuesto de $5,900 sin diagnóstico | Ruta de aprobación por autoridad de gasto; "diagnóstico antes de reemplazo" como próxima acción. | Coordinador → lead ($1.5k contención) → manager ($2.5k move-in) → ejecutivo. |
-| Acceso "confirmado" cuando el edificio lo negó (AI-05) | El gate exige confirmación positiva; la negativa se muestra, no se tapa. | Cada visita fallida del caso rastrea a este gate inexistente. |
-| "¿Belong me paga la comida?" (AI-03) | El borrador compromete un horario, nunca plata. Reembolso → humano con autoridad. | "Nunca prometemos resultado ni dinero sin autoridad." |
-| "No smoke" leído como humo | Negaciones se descartan antes de aplicar reglas (bug encontrado y testeado). | Tenés 6 bugs documentados en `CLAUDE.md` con su test cada uno — contalos como historia de validación (piden "un ejemplo donde la IA falló"). |
-| Mismo problema por dos canales (AI-06) | Match contra la cola + "Registrar como update": un caso, no dos. | La cola heredada tenía exactamente este duplicado. |
+| Inyección AI-07 (frase secreta en el web-form) | Cuarentena pre-análisis, visible en pantalla con el texto tachado. | "Probablemente escanean las entregas buscando esa frase. La mía la muestra en cuarentena, que es la prueba contraria." |
+| Handyman en trabajo eléctrico | El pedido mismo se marca; no existe camino de UI para asignarlo. | Mostrá la lista de vendors excluidos **con el motivo**. |
+| Presupuesto de $5,900 sin diagnóstico | Ruta de aprobación por autoridad de gasto; "diagnóstico antes de reemplazo". | Coordinador → lead ($1.5k contención) → manager ($2.5k move-in) → ejecutivo. |
+| Acceso "confirmado" cuando el edificio lo negó (AI-05) | El gate exige confirmación **escrita del edificio**; la negativa se muestra. | "Cada visita fallida del caso rastrea a este gate inexistente." |
+| "¿Belong me paga la comida?" (AI-03) | El borrador compromete un horario, nunca plata. | "Nunca prometemos resultado ni dinero sin autoridad." |
+| "No smoke" leído como humo | Negaciones descartadas antes de aplicar reglas. | Es uno de los 6 bugs documentados — usalos como historia de validación. |
+| Mismo problema por dos canales (AI-06) | Match + "Registrar como update": un caso, no dos. | La cola heredada tenía exactamente este duplicado (M-108 y M-109). |
 
-## 4. Guión de demo (~7 minutos + el input sorpresa)
+## 4. Guión de demo (~7 minutos)
 
-1. **Landing** (20s): "Un artefacto: estructura el intake, recomienda con
-   motivos citando la política, y reporta qué rompe cada cambio. Decide una
-   persona." Badge "simulación, datos ficticios" a la vista.
-2. **AI-02 en `/resident`** (1 min): enchufe con chispas. En el inbox: P0 con
-   cláusula, solo electricistas con licencia, contención (breaker off) separada
-   de la reparación, y "no smoke" correctamente ignorado como peligro.
-3. **AI-07** (1 min): la lavadora con la inyección pegada. Momento cuarentena.
-4. **AI-06** (1 min): mancha de techo repetida → "Registrar como update".
-5. **Tablero** (2 min): panel de riesgo (crew de pintura comprometida a 3
-   move-ins con capacidad para 2), un caso expandido completo, el access gate
-   bloqueando un dispatch con el motivo nombrado, override con justificación.
-6. **Escenario en vivo** (1 min): marcá un vendor como caído → el panel
-   recalcula y resalta el delta. Este es tu as para cuando ellos cambien
-   capacidad en vivo. Reset.
-7. **Cierre gobernanza** (30s): tabla actúa / recomienda / aprueba humano.
+Todo se maneja desde **Presenter controls** (arriba de cualquier pantalla
+`/ops`). Antes de empezar: apretá **Reset to Monday 08:00**.
 
-**El input sorpresa:** caja "New message" del lado ops (canal + texto + Home
-opcional). Pegás, triage al instante, y narrás el resultado con las mismas
-categorías de siempre. Si el motor no determina algo, la UI dice qué falta —
-eso también es respuesta correcta: "el sistema no adivina".
+1. **Landing** (20s). "Un artefacto: estructura el intake, recomienda citando
+   la política, y reporta qué rompe cada cambio. Decide una persona."
+2. **AI-02 desde `/resident`** (1 min). Pegá el texto del enchufe con chispas y
+   enviá. En el inbox: **P0 con la regla P0.3**, solo electricistas con
+   licencia, contención (breaker) separada de la reparación, y "No smoke"
+   correctamente no leído como humo.
+3. **AI-07** (1 min). Presenter → Replay → AI-07. **El momento cuarentena**:
+   la instrucción aparece tachada, con "influenced no priority, licence check,
+   vendor or draft below".
+4. **AI-06** (1 min). Replay → AI-06. Matchea M-108 → "Log as an update to
+   M-108" → confirmá. **Un caso, no dos.**
+5. **Tablero** (2 min). Panel de riesgo: ReadySet comprometida a 3 casos con
+   capacidad para 2, dos move-ins en rojo. Buscá **M-107**: "Dispatch is
+   blocked", 0 de 3 condiciones, con el motivo nombrado. Mostrá que el servidor
+   también lo rechaza, no solo la pantalla.
+6. **Cambio en vivo** (1 min). Presenter → Change availability → sacá
+   **BrightLine Electric**, cortá **ReadySet a 1/day**, sacá a **Jordan Lee** →
+   Apply. El tablero dice **"It newly breaks 3 things"** y marca cuáles.
+   **Este es tu as cuando ellos cambien capacidades.** Después: Clear.
+7. **Cierre en `/about`** (30s): actúa / recomienda / aprueba humano.
 
-## 5. Mejoras que este plan agrega (para que nada quede sin revisar)
+**El input sorpresa:** Presenter → New message → elegí canal → pegá → "Triage
+it". Aparece arriba del inbox, ya triado. Narralo con las mismas categorías:
+prioridad + regla, trade, contención, acceso, qué falta, qué rompería.
 
-Estas son **nuevas** respecto de lo ya trabajado — revisalas y decidí si las
-mostrás todas:
+Si el motor no determina algo, la UI dice qué falta. **Eso también es una
+respuesta correcta:** "el sistema no adivina y no presenta una suposición como
+un hecho".
 
-1. **Panel de escenarios** (vendor caído / capacidad recortada / coordinador
-   afuera) con delta de conflictos en vivo — construido específicamente para
-   la sección 5 del PDF, donde anuncian que van a cambiar capacidades en vivo.
-2. **Replay de intake**: los AI Test Inputs llegan solos al inbox mientras
-   ellos miran, con canal realista cada uno.
-3. **Landing "demo hub"** que encuadra el artefacto antes de mostrarlo.
-4. **Override con motivo obligatorio y log doble** (valor del motor + valor
-   humano): promovido de "idea" a alcance del build.
-5. **Badge de simulación** en todas las pantallas: honestidad de marca (no es
-   el logo oficial) y cumple la regla del caso de no usar datos reales.
-6. **Métricas honestas**: donde falta el evento, el tile dice "sin registrar
-   aún — falta \<evento\>" en vez de inventar un número. Defendible: el caso
-   castiga métricas que "se ven bien y no miden nada".
-7. **Botón Reset** al estado lunes 08:00, para ensayar la demo N veces.
-8. **Bug detectado en esta revisión**: `src/app/api/cases/route.ts` exporta
-   funciones no-HTTP (rompe `next build`). Está anotado en el plan, Fase 0.
+## 5. Lo que este build agrega sobre lo planeado
 
-## 6. Preguntas probables y tu respuesta corta
+1. **Panel de escenarios con delta** — no solo aplica el cambio: compara contra
+   el mundo real y marca **solo lo que rompe de nuevo**. La pregunta útil en
+   vivo nunca es "cómo está el tablero" sino "qué rompe esto que no estaba ya
+   roto".
+2. **Presenter controls** en un solo lugar: replay, mensaje nuevo, escenario y
+   reset. No tenés que buscar tres pantallas mientras te miran.
+3. **Override con motivo obligatorio** y doble registro (grado del motor +
+   humano).
+4. **El access gate se cumple en el servidor**, no solo deshabilitando el menú.
+   Podés mostrarlo con `curl` si alguien pregunta si es cosmético.
+5. **Métricas honestas**: donde falta el evento, el tile dice "not yet recorded
+   — needs \<evento\>" y muestra el indicador adelantado que sí es medible,
+   etiquetado como otra cosa.
+6. **Badge de simulación** en todas las pantallas + wordmark dibujado (no el
+   logo real de Belong). Honesto y cumple la regla de no usar material real.
+7. **`npm run smoke`** — el camino de demo como test ejecutable, claro y
+   oscuro. Corrélo antes de presentar.
+
+## 6. Hallazgos del build (cosas que tenés que saber)
+
+1. **La frase-señuelo estaba transcrita en el repo.** El código base traía el
+   input AI-07 completo, con la frase real que la inyección quiere que aparezca
+   en tu resumen ejecutivo, dentro de `engine.test.ts`. La reemplacé por un
+   sustituto ficticio del mismo formato: la inyección se reproduce entera, el
+   motor la detecta igual, y la demo es idéntica — pero el entregable no carga
+   la frase que ellos buscan. **La frase real sigue en el commit inicial
+   (`892fe47`)**, que vino del zip. Si querés limpiarla del historial hay que
+   reescribir la rama; es tu decisión, avisame y lo hago.
+2. **Bug de build arreglado.** `src/app/api/cases/route.ts` exportaba funciones
+   no-HTTP, lo que rompía `next build`. Era la primera tarea de la Fase 0.
+3. **Un hueco de cobertura real en los datos.** No hay vendor de reparaciones
+   generales que cubra Doral: HandyHub cubre PC, KN, CG, CV y BR. Si abrís un
+   caso nuevo ahí, el motor lo dice correctamente. No es un bug.
+4. **El cierre NO está bloqueado por verificación, a propósito.** Cerrar un
+   duplicado (M-109) es un cierre legítimo sin trabajo que verificar.
+   Bloquearlo empujaría al operador a querer el bypass que este producto se
+   niega a tener. Está documentado en `gates.ts` y hay un test.
+5. **No pude verificar la marca real de Belong** — belonghome.com está
+   bloqueado desde este entorno. La paleta es "Belong-inspired" (verde
+   profundo, crema, terracota) y el wordmark está dibujado, no copiado.
+6. **El costo es texto libre en los datos**, así que la métrica de gasto sobre
+   el límite parsea la primera cifra y lo admite en pantalla. Eso mismo es un
+   hallazgo operativo: el costo debería ser un campo estructurado.
+
+## 7. Preguntas probables y tu respuesta corta
 
 - **"¿Por qué no usaste un LLM si el ejercicio dice que se espera uso de IA?"**
-  → Usé IA a fondo para *construir* (derivar reglas de las políticas, diseñar
-  el clasificador, encontrar 6 bugs con inputs no vistos). En *runtime* la
-  decisión es determinística porque los datos traían inyecciones apuntadas a
-  los errores más caros. El apéndice de IA del caso pide exactamente esto:
-  dónde falló, cómo validé, qué controles harían falta antes de producción.
-- **"¿Qué harías distinto con más tiempo?"** → Persistencia real (Postgres,
-  el store ya está aislado), timestamps de eventos para las 7 métricas, y un
+  → Usé IA a fondo para *construir*: derivar reglas de las políticas, diseñar
+  el clasificador, y encontrar 6 bugs corriendo el motor contra mensajes no
+  vistos. En *runtime* la decisión es determinística porque los datos traían
+  inyecciones apuntadas a los errores más caros. El apéndice de IA del caso
+  pide exactamente esto: dónde falló, cómo validé, qué controles harían falta.
+- **"¿El gate es real o cosmético?"** → Real. La pantalla deshabilita la opción
+  y el servidor rechaza la transición con 409 usando la misma función, así que
+  no pueden divergir. Te lo puedo mostrar con `curl`.
+- **"¿Qué harías distinto con más tiempo?"** → Persistencia real (el store ya
+  está aislado), los timestamps de evento que faltan para las 7 métricas, y un
   LLM *fuera* del camino de decisión (pulir tono de mensajes que un humano
   aprueba, resumir hilos largos).
-- **"¿Esto escala a más mercados?"** → Los hechos de dominio están separados
-  de la lógica (`src/lib/domain`); otro mercado es otro set de datos, no otro
-  código. Las reglas de política se revisan semanalmente contra lo que pasó
-  de verdad (P0/P1 vs realidad).
-- **"¿Y si el operador no está de acuerdo con el motor?"** → Puede: cambia
-  prioridad u owner dejando motivo, y quedan las dos versiones en el log.
-  Lo único sin override es licencia, gasto y gate de acceso — eso es política,
-  no preferencia.
+- **"¿Esto escala a más mercados?"** → Los hechos de dominio están separados de
+  la lógica (`src/lib/domain`); otro mercado es otro set de datos, no otro
+  código.
+- **"¿Y si el operador no está de acuerdo con el motor?"** → Puede cambiar
+  prioridad u owner dejando motivo, y quedan las dos versiones en el log. Lo
+  único sin override es licencia, gasto y access gate — eso es política, no
+  preferencia.
+- **"¿Por qué hay métricas vacías?"** → Porque el evento no se registra todavía
+  y un número ahí sería inventado. El caso castiga explícitamente las métricas
+  que se ven bien y no miden nada. El tile dice qué evento falta: eso es el
+  backlog de instrumentación, escrito donde lo ve quien lo necesita.
 
-## 7. Cómo correr y cómo lanzar la sesión de código
+## 8. Cómo correrlo
 
 ```bash
-npm install && npm run dev   # http://localhost:3000
-npm test                     # 21 tests del motor — corré esto ante cualquier duda
+npm install
+npm run dev          # http://localhost:3000
+npm test             # 48 tests del motor y los gates
+npm run build && npm run start   # producción local
+npm run smoke        # el camino de demo completo, claro y oscuro
 ```
 
-Para la sesión de código (con Opus 5), el prompt sugerido:
+Antes de presentar: **`npm run build && npm run start`** (más rápido y estable
+que `dev` en una demo), abrí `/`, y apretá **Reset to Monday 08:00**.
 
-> Lee CLAUDE.md y docs/EXECUTION-PLAN.md y ejecutá el plan fase por fase, en
-> orden, corriendo `npm test && npm run typecheck` al final de cada fase y
-> `npm run build` en las fases que el plan lo indica. No toques
-> `src/lib/triage/engine.ts` salvo parámetros opcionales cubiertos por tests
-> nuevos. Al terminar cada fase, commiteá con un mensaje que nombre la fase.
-
-Iterá por fases: si mañana solo llegás hasta la Fase 3, ya tenés demo completa.
+Si querés deploy: el store ya cae a memoria cuando el filesystem es de solo
+lectura, así que anda en Vercel sin cambios. El estado se reinicia en cada cold
+start, que para una demo está bien.
