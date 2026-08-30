@@ -17,6 +17,10 @@ Needs Node 20 or newer. Nothing else — no database, no environment variables,
 no accounts. State lives in `.data/` (gitignored) so the product runs the
 moment it is cloned.
 
+**On Windows, double-click `start-windows.bat`.** It installs, builds, opens
+the browser and starts the server. PowerShell blocks npm's script by default
+and the batch file sidesteps that, so nobody demonstrating this has to care.
+
 ```bash
 npm install
 npm run build && npm run start    # http://localhost:3000
